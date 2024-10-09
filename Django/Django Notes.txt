@@ -1,0 +1,1322 @@
+DJANGO 
+
+
+Req :
+USER -----> Browser -----> Server
+
+Res :
+USER <----- Browser <----- Server
+
+> Django is a free and open source backend framework
+> Framework is a collection of components used to build sites
+> Django provides admin panel (CRUD)
+
+To Create a Django Project : django-admin startproject project_name
+
+Manage.py - inorder to create a server for existing project.
+
+init.py - its job isto tell that the current directory is a python package
+
+settings.py - contains all settings and configurations
+
+urls.py - all the incoming requests url must match with the patterns url
+
+
+Start up a server : 
+cd project_name
+
+python3 manage.py runserver
+
+
+>Multiple apps combine to form Django project or a website
+
+views.py - process user requests and must respond to the particular request
+
+How to write a view : 
+> it is generally written in a python function.
+> written inside views.py
+
+syntax : 
+
+def viewname(request):
+    return()
+ 
+
+to create a app : 
+cmd : python manage.py startapp food
+
+Note : In order to use render -> from Django.shortcuts import render
+       In order to use HttpResponse -> from Django.http import HttpResponse
+
+
+views.py
+
+from django.shortcuts import render
+from django.http import HttpResponse
+
+urls.py
+
+from django.urls import path,include
+
+# Create your views here.
+def index(request):
+    return HttpResponse("Hello World")
+
+A view responds to a particular url such that urls.py is used
+
+urls.py
+
+from . import views
+from django.urls import path
+
+urlpatterns = [path('',views.index,name="index"),]
+
+Server checks the main project urls.py in this case mysite -> urls.py
+hence include food -> urls.py in  mysite -> urls.py
+
+main project urls.py
+
+from django.contrib import admin
+from django.urls import path,include
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("food/",include('food.urls'))
+]
+
+request - Django - settings.py - mysite.urls - urlpatterns - find.urls - urlpatterns - "hello/" - view - response
+
+
+Models - It allows us to create database tables.(actually a blueprint to create tables)
+> Models are nothing but classes in python
+> models.py
+> To create a student model simply create a class named student in models.py
+> Django comes with a preinstalled database that is sqllite3
+
+python manage.py migrate - settings.py - installedapps - create database - based on models.py
+
+whenever we make in any changes in models.py - python manage.py makemigrations food
+
+add food app in settings.py - installed apps
+
+Models.py 
+
+from django.db import models
+
+# Create your models here.
+class Item(models.Model):
+    item_name = models.CharField(max_length=200)
+    item_desc = models.CharField(max_length=200)
+    item_price = models.IntegerField()
+
+python manage.py makemigrations food
+
+Migrations for 'food':
+  food\migrations\0001_initial.py
+    - Create model Item
+
+To actually create a database 
+
+python manage.py sqlmigrate food 0001
+
+BEGIN;
+--
+-- Create model Item
+--
+CREATE TABLE "food_item" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "item_name" varchar(200) NOT NULL, "item_desc" varchar(200) NOT NULL, "item_price" integer NOT NULL);
+COMMIT;
+
+python manage.py migrate
+
+Storing data in database
+
+Django has a Database abstraction API used to create, update and delete an object
+Object is nothing but data but to create an object we require a class i.e class Item model
+After creation of an object(Data) use save() method to store in the database
+
+
+To add a data in database we need to use a pythonshell ( Interactive shell )
+>>> python manage.py shell
+
+>>> from food.models import Item
+>>> Item.objects.all() - return all the rows 
+<QuerySet []>
+>>> a=Item(item_name="Pizza",item_desc="Cheezy Pizza",item_price=20)
+>>> a.save()
+>>> a.id
+>>> a.pk
+Item.objects.all()
+Out[11]: <QuerySet [<Item: Item object (1)>, <Item: Item object (2)>]>
+
+>>>exit()
+
+to get string names we explicity mention it in models.py in class Item
+
+Adding data through shell or Database abstraction api is hard hence Django provides a admin panel
+
+python manage.py createsuperuser
+Username (leave blank to use '2003u'): udaykiran10
+Email address: 2003udhaykiran@gmail.com
+Password:
+Password (again):
+Superuser created successfully.
+
+To show Item model in admin panel import the model in admin.py
+
+from .models import Item
+
+admin.site.register(Item)
+
+runserver - admin panel is used to add, update and delete the objects of Item class
+
+How to retrive data or objects :
+
+In Django , data is retrived using Queryset
+Queryset - collection of all objects
+
+Item - model
+objects - manager
+all() - method
+
+a model has atleast one manager
+
+Open views.py
+
+from .models import Item
+
+def index(request):
+    item_list = Item.objects.all()
+    return HttpResponse(item_list)
+
+Template is used to set format like index.html and also used to send item_list parameter to correctly render
+
+Use of templates : entire html page can be passed
+> database can also be rendered using templates
+django has its own template called django template engine
+
+> templates - food - index.html
+
+in views 
+from django.template import loader
+template require context and context is nothing but the data which we acquire from database
+django combines the template and database then gives the output
+
+def view(request):
+     item_list=Item.objects.all()
+     template = loader.get_template('food/index.html)
+     context={'item_list':item_list}
+     return HttpResponse(template.render(context,request))
+
+templates have its own syntax
+
+index.html 
+
+{%  for item in item_list %}
+<ul>
+    <li> {{item.id}} -- {{item.item_name}} </li>
+</ul>
+{% endfor %}
+
+instead of HttpResponse 
+return render(request,'food/index.html',context)
+
+
+Detail View :
+
+Like if we click on pizza it should display pizza price and pizza decs 
+def detail(request,item_id):
+    return HttpResponse("This is id no %s" % item_id)
+
+urls : 
+path('<int : item_id>',views.detail,name="detail)
+
+def detail(request,item_id):
+    item = Item.objects.get(pk=item_id)
+    context={
+        'item':item,
+    }
+    return render(request,'food/detail.html',context)
+
+detail.html
+
+<h1>{{ item.item_name }}</h1>
+<h2>{{ item.item_desc }}</h1>
+<h3>{{ item.item_price }}</h1>
+
+{%  for item in item_list %}
+<ul>
+    <li> <a href='{{item.id}}'>{{item.id}} -- {{item.item_name}} </a></li>
+</ul>
+{% endfor %}
+
+DTL ( Django template language)
+to run template language we require django template engine 
+
+DTL - default engine
+variable  - {{variable}}
+
+Hard coded url 
+
+ <li> <a href="{% url 'detail' item.id %}">{{item.id}} -- {{item.item_name}} </a></li>
+ replace url name="detail" and pass item.id
+
+ Name spacing 
+ different apps may have same url name in that case django may not which app needed to be triggered
+ urls 
+ app_name='food'
+ <li> <a href="{% url 'food:detail' item.id %}">{{item.id}} -- {{item.item_name}} </a></li>
+
+Static files are used to collect the files wwhich are static in nature
+mysite - food - static - food - style.css 
+
+ <link rel="stylesheet" href="{% static 'food/style.css' %}">
+
+ add {% load static %}
+
+ if css didn't render then restart the server
+
+ In previos versions we use {% load staticfiles %}
+
+ Static files - javascript , Css , Images
+ How django know about static files location
+
+ settings.py - installedapps - static files - static url - '/static/' - directory
+
+Adding Bootstrap 
+
+<nav class="navbar navbar-dark bg-dark">
+        <a href="#" class="navbar-brand">Food App</a>
+        <div class="navbar text-light">
+            <a class="nav-item nav-link me-3" href="#">Add Item</a>
+            <a class="nav-item nav-link me-3" href="#">View Item</a>
+            <a class="nav-item nav-link me-3" href="#">Delete Item</a>
+        </div>
+</nav>
+
+If we want to use the same template again n again we use base.html
+
+At the end of base.html
+{% block body %}
+{% endblock %}
+It indicates after executing base html, execute the content between this two in index.html
+
+add base.html to index.html
+header  = {% extends 'food/base.html' %}
+Now remove load static and add it into base.html
+
+<nav class="navbar navbar-dark bg-dark d-flex">
+        <a href="#" class="navbar-brand">Food App</a>
+        <div class="navbar-nav">
+            <a class="nav-item nav-link me-3" href="#">Add Item</a>
+            <a class="nav-item nav-link me-3" href="#">View Item</a>
+            <a class="nav-item nav-link me-3" href="#">Delete Item</a>
+        </div>
+</nav>
+{% block body %}
+{% endblock %}
+
+add base.html to detail.html
+
+adding images 
+
+add new attribute to model Item
+item_image = models.CharField(max_length=500,default="https://cdn-icons-png.flaticon.com/512/1377/1377194.png")
+
+python manage.py makemigrations
+python manage.py sqlmigrate food 0002
+python manage.py migrate
+
+//THIS IS OLD CODE
+<ul>
+    {% for item in item_list %}
+    <li>
+        <a href="{% url 'food:detail' item.id %}">{{ item.id }} -- {{ item.item_name }}</a>
+    </li>
+    {% endfor %}
+</ul>
+
+
+{% extends 'food/base.html' %}
+{% block body %}
+   {% for item in item_list %}
+   <div class="row">
+      <div class="col-md-3 offset-md-1">
+           <img class="image-fluid" height="150px" src="{{ item.item_image }}"/>
+      </div>
+      <div class="col-md-4 offset-md-1">
+           <h3>{{ item.item_name }}</h3>
+           <h5>{{ item.item_desc }}</h5>
+           <h6>{{ item.item_price }}</h6>
+      </div>
+      <div class="col-md-2 offset-md-1">
+        <a href="{% url 'food:detail' item.id %}" class="btn btn-success">details</a>
+      </div>
+   </div>
+
+   {% endfor %}
+{% endblock %}
+
+//THIS IS OLD CODE
+<ul>
+    {% for item in item_list %}
+    <li>
+        <a href="{% url 'food:detail' item.id %}">{{ item.id }} -- {{ item.item_name }}</a>
+    </li>
+    {% endfor %}
+</ul>
+
+
+class image-fluid we can set to our adjustments
+
+add images url using admin panel
+
+adding Bootstrap in detail.html
+
+{% extends 'food/base.html' %}
+{% block body %}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-6">
+             <img height="75px" src="{{ item.item_image }}" class="card">
+        </div>
+        <div class="col-md-6">
+            <h1>{{ item.item_name }}</h1>
+            <h2>{{ item.item_desc }}</h1>
+            <h3>${{ item.item_price }}</h1>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+Forms in Django 
+> add item
+> view item
+> delete item
+
+add path('add/',views.create_item,name="create_item")
+> create forms.py in food
+forms.py
+
+from django import forms 
+from .models import Item
+
+class ItemForm(forms.ModelForm):
+      class Meta:#tells us what feilds must be present in form
+            model= Item #model for Item
+            fields = ['item_name','item_desc','item_price','item_image']
+
+now we need to create actual template
+
+item-form.html
+
+<form method="post">
+    {%  csrf_token %}
+    {{ form }}
+    <button type="submit">save</button>
+</form>
+
+
+create a view to access the form
+from .forms import ItemForm
+from django.shortcuts import redirect
+def create_item(request):
+    form = Item_form(request.POST or None) # as Item_form is a class we need to create a object for It
+    if form.is_valid():
+        form.save()
+        return redirect('food:index')
+    return render(request,'food/item-form.html',{'form':form})
+
+
+create forms.py add form -> create one webpage for this to use that form i.e : item-form.html -> create view extract the ItemForm class and render with template(item-form.html) and context {'form':form}
+
+add "add/" url to add item in base.html
+
+<a class="nav-item nav-link me-3" href="{% url 'food:create_item %}">Add Item</a>
+
+
+{% extends 'food/base.html' %} in item-form.html
+
+Update_item
+
+path('update/<int:id>/',views.update_item,name="update_item") 
+>> same form we will use ItemForm
+>> views.py
+
+def update_item(request,id):
+    item = Item.objects.get(pk=id)
+    form = ItemForm(request.POST or None,instance=item)
+    if form.is_valid():
+        form.save()
+        return redirect('food:index')
+    return render(request,'food/item-form.html',{'form':form,'item':item})
+
+delete item
+
+path('delete/<int:id>/',views.delete_item,name="delete_item")
+
+def delete_item(request,id):
+     item = Item.objects.get(id=id)
+     if request.method == "POST":
+         item.delete()
+         return redirect('food:index')
+     #to confirm to delete the item we are sending user to another page
+     return render(request,'food/item-delete.html',{'item':item})
+
+we showing delete button in detail.html
+ <a href="{% url 'food:delete_item' item.id %}">Delete</a>
+
+delete-item.html
+
+<form method="POST">
+    {% csrf_token %}
+    <h2>Are you sure, You wamt to delete the item {{item.item_name}}</h2>
+    <button type="submit">Confirm</button>
+</form>
+
+Authenication - creating a new app
+django-admin startapp user
+visit apps.py in user
+add it into mysite installed_apps
+"user.apps.UserConfig
+
+
+Inorder to register a user details we require forms
+for Authenication, django has a inbuilt form 
+
+Go to views.py 
+
+from django.contrib.auth.forms import UserCreationForm
+def register(request):
+    form = UserCreationForm()
+    return render(request,'user/register.html',{'form':form})
+
+template- register.html
+
+<form method="post">
+    <% csrf_token %>
+    {{ form }}
+    <button type="button">Sign Up</button>
+</form>
+
+add url directly in mysite urls
+from user import views as user_views
+path("register/",user_views.register,name="register")
+
+runserver
+
+sign up function
+
+using method==post we can tell whether data is submitted or not
+
+
+views.py
+
+from django.shortcuts import render,redirect
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib import messages
+
+# Create your views here.
+def register(request):
+    if request.method=="POST":
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            messages.success(request,f'Welcome {username}, you have successfully created an account')
+            return redirect('food:index')
+    form = UserCreationForm()
+    return render(request,'user/register.html',{'form':form})
+
+above code is with validation
+
+add messages in base.html
+
+{% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{message.tags}}">{{message}}</div>
+        {% endfor %}
+{% endif %}
+
+form.is_valid() - > checks exiting users if same username is used raise error
+
+add form.save() in form.is_valid()
+
+adding email field in form can be done after creating our own form and inherit the UserCreationForm
+
+forms.py
+
+from django import forms
+from django.contrib.auth.models import User
+from django.contrib.auth.forms import UserCreationForm
+
+class RegisterForm(UserCreationForm):
+    email = forms.EmailField()
+    #class meta give information about present class
+    class Meta:
+        model = User
+        fields=['username','email','password1','pasword2']
+    
+views.py
+
+from django.shortcuts import render,redirect
+from django.contrib import messages
+from .forms import RegisterForm
+
+# Create your views here.
+def register(request):
+    if request.method == 'POST':
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get('username')
+            messages.success(request,f'Welcome {username}, you have successfully created an account')
+            return redirect('food:index')
+    else:
+        form = RegisterForm()
+    return render(request,'user/register.html',{'form':form})
+
+Logging Functionality
+Django has its own logging functionality we need not to use any view
+
+django has its own view for login
+
+path("login/",authhenication_view.LoginView.as_view(template_name='user/login.html'),name="login"),
+path("logout/",authhenication_view.LogoutView.as_view(template_name='user/logout.html'),name="logout"),
+
+as_view() because LoginView is a class
+
+This requires templates
+
+login.html
+
+<form method="POST">
+    {% csrf_token %}
+    {{ form }}
+    <button type="submit">Login</button>
+</form>
+
+If we use /login Now
+
+it will redirect you to accounts/profile
+
+to check this logout from admin panel and try to login through login page 
+then again tap on /admin
+
+to make the user redirect to index page
+
+settings.py
+
+LOGIN_REDIRECT_URL = 'food:index'
+
+after register redirect to login page
+
+from django.shortcuts import render,redirect
+from django.contrib import messages
+from .forms import RegisterForm
+
+# Create your views here.
+def register(request):
+    if request.method == 'POST':
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get('username')
+            messages.success(request,f'Welcome {username}, you have successfully created an account')
+            return redirect('login')
+    else:
+        form = RegisterForm()
+    return render(request,'user/register.html',{'form':form})
+
+using logout 
+to check this login into admin panel and try to '/logout/' through index page 
+then again tap on /admin
+
+django has a variable which tells us whether the user is authenicated or not and also tells the information about the user
+
+base.html
+
+{% if user.is_authenticated %}
+    <a href="{% url 'logout' %}">Logout</a>
+{% else %}
+    <a href="{% url 'login' %}">Login</a>
+{% endif %}
+
+till now anyone can access the index page but now onwards only registered users can view the page
+
+> Adding Retrictions
+
+works only if a user is authenicated
+'/profile'
+
+views.py
+
+def profilepage(request):
+    return render(request,'user/profile.html')
+
+urls.py - mysite
+path("profile/",user_views.profilepage,name="profile")
+
+add profile in base.html in login case
+
+if the user is authenicated he can access the profile page but in case if he is not he cant access
+
+to make use of this we need to use decorator 
+
+from django.contrib.auth.decorators import login_required 
+@login_required
+def profilepage(request):
+    return render(request,'user/profile.html')
+
+
+Now if you are not a authenicated user
+django will redirect you - > Request URL:	http://127.0.0.1:8000/accounts/login/?next=/profile/
+
+to modify this 
+settings.py
+
+login_url = 'login'
+
+Now adding more fields in profile
+like image,location etc to make these fields we need to create a model and extends it to user(which is predefined model)
+
+to add a imageField django require pillow
+pip  install pillow
+
+models.py
+
+from django.db import models
+from django.contrib.auth.models import User
+
+# Create your models here.
+class profile(models.Model):
+    #each user will have a specific profile
+    user = models.OneToOneField(User,on_delete=models.CASCADE)
+    #on_delete=models.CASCADE -> If you delete the user automatially the profile will get deleted
+    image = models.ImageField(default='profilepic.jpg',upload_to='profile_pictures')
+    #pip install pillow
+    location = models.CharField(max_length=200)
+
+    def __str__(self):
+        return self.user.username
+
+makemigrations,migrate
+
+add model to admin.py
+
+from django.contrib import admin
+from .models import Profile
+
+# Register your models here.
+admin.site.register(Profile)
+
+Now login through admin panel and add one user
+
+Now if you want to check where your image is stored
+
+python manage.py shell
+
+In [1]: from django.contrib.auth.models import User
+
+In [2]: user = User.objects.filter(username='udaykiran10').first()
+
+In [3]: user
+Out[3]: <User: udaykiran10>
+
+In [4]: user.profile
+Out[4]: <Profile: udaykiran10>
+
+In [5]: user.profile.image
+Out[5]: <ImageFieldFile: profile_pictures/propic_2.jpeg>
+
+to know where the directory is profile_pictures
+
+profile_pictures directory is showing before user , food 
+
+now we will decide where it should be stored 
+
+Images will be stored in server not database server---computer
+
+MEDIA_ROOT= os.path.join(BASE_DIR,'pictures')
+MEDIA_URL = '/pictures/'
+
+Adding profile image to profile page
+
+<h2>{{ user.username }}</h2>
+<img src="{{ user.profile.image.url }}">
+
+image wont be displayed because images are stored in server not database
+
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns += [
+    # ... the rest of your URLconf goes here ...
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+add this in url main project
+
+default image
+download a image in iconfinder
+
+save image in pictures
+
+Django Signal -> Creating profile automatially whenever a new user get registered
+
+user registeration -> signal -> user profile
+
+whenever django hits form.save() it will create a profile
+
+signals.py
+
+from django.db.models.signals import post_save
+from django.contrib.auth.models import User
+from django.dispatch import receiver
+from .models import Profile
+
+receiver receives the signal and perform the action 
+
+def build_profile(sender,instance,created,**kwargs):
+    if created:
+        Profile.objects.create(user=instance)
+
+this function should be fired when user get registered
+
+@receiver(post_save,sender=User)
+def save_profile(sender,instance,**kwargs):
+    instance.Profile.save()
+
+import this in apps
+
+from django.apps import AppConfig
+
+
+class UserConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "user"
+    def ready(self):
+        import user.signals
+
+
+
+Class based view 
+
+for food : index we will change function based view to class based view
+
+views.py food
+
+from django.views.generic.list import List_View
+
+class IndexClassView(ListView):
+    model = Item
+    template_name = 'food/index.html'
+    context_object_name='item_list'
+
+ path('',views.IndexClassView.as_view(),name="index")
+
+ this is a list view now we will go for detail view
+
+
+class FoodDetail(DetailView):
+    model = Item
+    template_name = 'food/detail.html'
+
+
+ path('<int:pk>/',views.FoodDetail.as_view(),name="detail")
+
+ {% extends 'food/base.html' %}
+{% block body %}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-6">
+             <img height="75px" src="{{ item.item_image }}" class="image-fluid">
+        </div>
+        <div class="col-md-6">
+            <h1>{{ object.item_name }}</h1>
+            <h2>{{ object.item_desc }}</h1>
+            <h3>${{ object.item_price }}</h1>
+            <a href="{% url 'food:delete_item' object.id %}">Delete</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+if we want to use item.item_name
+
+then pass context_object_name='item'
+
+User Post : 
+-> Which user created which food object
+
+from django.db import models
+from django.contrib.auth.models import User 
+
+
+# Create your models here.
+class Item(models.Model):
+
+    def __str__(self):
+          return self.item_name
+    user_name = models.ForeignKey(User,on_delete=models.CASCADE,default=1)
+    item_name = models.CharField(max_length=200)
+    item_desc = models.CharField(max_length=200)
+    item_price = models.IntegerField()
+    item_image = models.CharField(max_length=500,default="https://cdn-icons-png.flaticon.com/512/1377/1377194.png")
+
+make migrations - sqlmigrate
+
+manually we can do using admin
+
+automatially can be done using the user who is loggeg in and trying to add
+
+whenever a user creates an item we want user to redirect to detail
+
+from django.db import models
+from django.contrib.auth.models import User 
+from django.urls import reverse
+
+
+# Create your models here.
+class Item(models.Model):
+
+    def __str__(self):
+          return self.item_name
+    user_name = models.ForeignKey(User,on_delete=models.CASCADE,default=1)
+    item_name = models.CharField(max_length=200)
+    item_desc = models.CharField(max_length=200)
+    item_price = models.IntegerField()
+    item_image = models.CharField(max_length=500,default="https://cdn-icons-png.flaticon.com/512/1377/1377194.png")
+
+def get_absolute_url(self):
+    return reverse('food:Detail',kwargs ={"pk":self.pk})
+
+User Automation
+
+#This is a class based view for create item
+class CreateItem(CreateView):
+    model = Item
+    fields=["item_name","item_desc","item_price","item_image"]
+    template_name='food/item-form.html'
+    def form_valid(self,form):
+        form.instance.user_name = self.request.user
+        return super.form_valid(form)
+
+now if you create an object you will see who is the creator of that object in admin view
+
+ <h7>{{ item.user_name }}</h7>
+
+design login,register and add
+
+
+{% extends 'food/base.html' %}
+{% block body %}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-4 offset-md-4">
+            <div class="card">
+                <div class="card-header text-white bg-info">
+                    <div class="card-title">
+                        Add Item
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form }}
+                        <button class="btn-info" type="submit">Sign Up</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+DJANGO REST Framework
+
+Create a new directory in Django
+
+> pip install djangorestframework
+
+cd DRP
+> django-admin startproject myproject
+
+creating a model and adding some dummy data into the database using the rest api we will get the data
+
+D:\cd DRP
+D:\Django\DRP\django-admin startproject mysite
+
+D:\Django\DRP\mysite>django-admin startapp movies
+
+INSTALLED_APPS = [
+    "rest_framework",
+    "movies.apps.MoviesConfig",
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+]
+
+models.py
+
+from django.db import models
+
+# Create your models here.
+class Moviedata(models.Model):
+    def __str__(self):
+        return self.name
+    name=models.CharField(max_length=200)
+    duration = models.FloatField()
+    rating=models.FloatField()
+
+
+Make Migrations
+
+Create Superuser
+username: UdayKiran543
+password : Chinnu@543
+
+admin.py
+
+from django.contrib import admin
+from .models import Moviedata
+
+# Register your models here.
+admin.site.register(Moviedata)
+
+Serializer used to convert model instances (data) into json format
+
+serializers.py
+
+from rest_framework import serializers
+from .models import Moviedata
+
+class MovieSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Moviedata
+        fields=['id','name','duration','rating']
+
+to show field through api we require views and urls
+
+from django.shortcuts import render
+from rest_framework import viewsets
+from .serializers import MovieSerializer
+from .models import Moviedata
+
+# Create your views here.
+
+class MovieViewSet(viewsets.ModelViewSet):
+    queryset = Moviedata.objects.all()
+    serializer_class = MovieSerializer
+
+
+urls.py
+
+"""
+URL configuration for mysite project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/4.2/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
+from django.contrib import admin
+from django.urls import path,include
+from movies.views import MovieViewSet
+from rest_framework import routers
+
+router = routers.DefaultRouter()
+router.register("movies",MovieViewSet)
+urlpatterns = [
+    path('',include(router.urls)),
+    path("admin/", admin.site.urls),
+]
+
+
+runserver
+/movies
+
+API ENDPOINTS
+
+> action movies
+> Triller movies
+> Romantic movies
+
+ genre=models.CharField(max_length=100,default='action')
+
+ make migrations
+
+ write a view for action
+
+ class ActionViewSet(viewsets.ModelViewSet):
+    queryset = Moviedata.objects.filter(genre='action')
+    serializer_class = MovieSerializer
+
+ serializers.py
+
+from rest_framework import serializers
+from .models import Moviedata
+
+class MovieSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Moviedata
+        fields=['id','name','duration','rating','genre']
+
+from django.contrib import admin
+from django.urls import path,include
+from movies.views import MovieViewSet,ActionViewSet
+from rest_framework import routers
+
+router = routers.DefaultRouter()
+router.register("movies",MovieViewSet)
+router.register("action",ActionViewSet)
+urlpatterns = [
+    path('',include(router.urls)),
+    path("admin/", admin.site.urls),
+]
+
+/action
+
+class LoveViewSet(viewsets.ModelViewSet):
+    queryset = Moviedata.objects.filter(genre='love')
+    serializer_class = MovieSerializer
+
+class ComedyViewSet(viewsets.ModelViewSet):
+    queryset = Moviedata.objects.filter(genre='comedy')
+    serializer_class = MovieSerializer
+
+
+image=models.ImageField(upload_to='Images/',default='Images/None/noimg.jpg')
+
+
+from rest_framework import serializers
+from .models import Moviedata
+
+class MovieSerializer(serializers.ModelSerializer):
+    image=serializers.ImageField(max_length=None,use_url=True)
+    class Meta:
+        model = Moviedata
+        fields=['id','name','duration','rating','genre','image']
+
+
+create media folder in mysite
+
+how images get store in media
+settings.py
+
+MEDIA_ROOT=os.path.join(BASE_DIR,'media')
+MEDIA_URL='/media/'
+
+add static files in urls
+"""
+URL configuration for mysite project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/4.2/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
+from django.contrib import admin
+from django.urls import path,include
+from movies.views import MovieViewSet,ActionViewSet,LoveViewSet,ComedyViewSet
+from rest_framework import routers
+from django.conf.urls.static import static
+from django.conf import settings
+
+router = routers.DefaultRouter()
+router.register("movies",MovieViewSet)
+router.register("action",ActionViewSet)
+router.register("love",LoveViewSet)
+router.register("comedy",ComedyViewSet)
+urlpatterns = [
+    path('',include(router.urls)),
+    path("admin/", admin.site.urls),
+]+static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)
+
+
+DJANGO FEATURES : 
+> Pagination
+> Search and filter
+> Virtual Environment
+> User Permissions - CRUD
+
+For import this features we are creating a seperate folder in D:/
+
+D:\Django\VirtualProject>pip install virtualenv
+create virtualenv
+>virtualenv env 
+
+activate virtualenv
+
+D:\Django\VirtualProject>cd env
+D:\Django\VirtualProject>env>cd Scripts
+D:\Django\VirtualProject>env>Scripts>activate
+
+deactivate - to deactivate the Environment
+
+(env) D:\Django\VirtualProject>
+
+(env) D:\Django\VirtualProject>pip install django
+
+(env) D:\Django\VirtualProject>django-admin startproject myproject
+
+successfully created a project in Virtual Environment
+
+(env) D:\Django\VirtualProject\myproject>django-admin startapp movies
+
+movies
+
+models.py
+
+from django.db import models
+
+# Create your models here.
+class Movies(models.Model):
+    if __str__(self):
+         return self.name
+    name = models.CharField(max_length=200)
+    rating=models.FloatField()
+
+admin.py
+
+from django.contrib import admin
+from .models import Movies
+# Register your models here.
+admin.site.register(Movies)
+
+
+# Application definition
+
+INSTALLED_APPS = [
+    "movies",
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+]
+
+make migrations
+
+create superuser
+(env) D:\Django\VirtualProject\myproject>python manage.py createsuperuser
+Username (leave blank to use '2003u'): UdayKiran10
+Email address: dummy@gmail.com
+Password: Uday@543
+Password (again):
+Superuser created successfully.
+
+views.py
+
+from django.shortcuts import render
+from .models import Movies
+
+# Create your views here.
+
+def movie_list(request):
+    movie_objects=Movies.objects.all()
+    return render(request,'myproject/movie_list.html',{'movie_objects':movie_objects})
+
+movie_list.html
+
+{% for movie_object in movie_objects %}
+{{ movie_object.name }}
+{% endfor %}
+
+from django.contrib import admin
+from django.urls import path
+from movies import views
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path('movies/',views.movie_list,name='movie_list'),
+]
+
+add movies upto 4
+
+from django.shortcuts import render
+from .models import Movies
+from django.core.paginator import Paginator
+
+# Create your views here.
+
+def movie_list(request):
+    movie_objects=Movies.objects.all()
+    paginator = Paginator(movie_objects,4)
+    page=request.GET.get('page')
+    movie_objects=paginator.get_page(page)
+    return render(request,'myproject/movie_list.html',{'movie_objects':movie_objects})
+
+it will display only 4 movies as we are in page number 1
+
+http://127.0.0.1:8000/movies/?page=2
+
+We dont want user to do this we will provide numbers so make changes in template
+
+{% for movie_object in movie_objects %}
+{{ movie_object.name }}
+</br>
+{% endfor %}
+
+{% if movie_objects.has_previous %}
+   <a href="?page=1">First Page</a>
+   <a href="?page={{ movie_objects.previous_page_number }}">Previous Page</a>
+{% endif %}
+Page : {{ movie_objects.number }} of {{ movie_objects.paginator.num_pages }}
+{% if movie_objects.has_next %}
+   <a href="?page={{ movie_objects.next_page_number }}">Next Page</a>
+   <a href="?page={{ movie_objects.paginator.num_pages }}">Last Page</a>
+{% endif %}
+
+Add Search button
+
+<form action="" method="get">
+    <input type="search" name="movie_name">
+    <button type="submit">Search</button>
+</form>
+
+views.py
+
+from django.shortcuts import render
+from .models import Movies
+from django.core.paginator import Paginator
+
+# Create your views here.
+
+def movie_list(request):
+    movie_objects=Movies.objects.all()
+    movie_name=request.GET.get('movie_name')
+    if movie_name!='' and movie_name is not None:
+        movie_objects=movie_objects.filter(name__icontains=movie_name)
+    paginator = Paginator(movie_objects,4)
+    page=request.GET.get('page')
+    movie_objects=paginator.get_page(page)
+    return render(request,'myproject/movie_list.html',{'movie_objects':movie_objects})
+
+User Permissions 
+
+
+

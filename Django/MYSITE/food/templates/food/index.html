@@ -1,0 +1,29 @@
+{% extends 'food/base.html' %}
+{% block body %}
+   {% for item in item_list %}
+   <div class="row">
+      <div class="col-md-3 offset-md-1">
+           <img class="image-fluid" height="150px" src="{{ item.item_image }}"/>
+      </div>
+      <div class="col-md-4 offset-md-1">
+           <h3>{{ item.item_name }}</h3>
+           <h5>{{ item.item_desc }}</h5>
+           <h6>{{ item.item_price }}</h6>
+           <h7>{{ item.user_name }}</h7>
+      </div>
+      <div class="col-md-2 offset-md-1">
+        <a href="{% url 'food:detail' item.id %}" class="btn btn-success">details</a>
+      </div>
+   </div>
+
+   {% endfor %}
+{% endblock %}
+
+//THIS IS OLD CODE
+<ul>
+    {% for item in item_list %}
+    <li>
+        <a href="{% url 'food:detail' item.id %}">{{ item.id }} -- {{ item.item_name }}</a>
+    </li>
+    {% endfor %}
+</ul>
